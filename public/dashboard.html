@@ -10,7 +10,7 @@
 
 <!-- HEADER -->
 <header class="app-header">
-  <img src="/assets/luxyt-logo.png" alt="Luxyt" class="logo"
+  <img src="/assets/luxyt-logo.svg" alt="Luxyt" class="logo"
        onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
   <div style="display:none;font-size:18px;font-weight:800;letter-spacing:-0.02em;">LUXYT</div>
   <button class="hamburger" id="hamburger" aria-label="Menu">
@@ -104,11 +104,10 @@
     <div id="ai-summary-box"></div>
 
     <div class="kpi-grid" id="kpi-grid">
-      <div class="kpi-card"><div class="kpi-label">Revenue</div><div class="kpi-value" id="kpi-revenue">—</div></div>
       <div class="kpi-card"><div class="kpi-label">Open Rate</div><div class="kpi-value" id="kpi-open-rate">—</div></div>
       <div class="kpi-card"><div class="kpi-label">CTR</div><div class="kpi-value" id="kpi-ctr">—</div></div>
-      <div class="kpi-card"><div class="kpi-label">Conversion Rate</div><div class="kpi-value" id="kpi-conv">—</div></div>
       <div class="kpi-card"><div class="kpi-label">Unsub Rate</div><div class="kpi-value" id="kpi-unsub">—</div></div>
+      <div class="kpi-card"><div class="kpi-label">Consegnate</div><div class="kpi-value" id="kpi-delivered">—</div></div>
     </div>
 
     <div class="section-bar">Ultime Campagne</div>
@@ -162,7 +161,11 @@
 
   <!-- ═══ REPORT SETTIMANALE ═══ -->
   <section id="sec-report" class="section">
-    <div class="week-selector" id="week-selector"></div>
+    <div id="month-selector-wrap" style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <strong style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em">Mese:</strong>
+      <div id="month-selector" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+    <div class="week-selector" id="week-selector" style="margin-bottom:16px"></div>
     <div class="date-range-inputs" style="margin-bottom:20px">
       <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em">Personalizzato:</span>
       <input type="date" id="range-start">
@@ -249,11 +252,12 @@ async function loadPanoramica() {
   if (!ovRes || !ovRes.ok) return;
   const d = await ovRes.json();
 
-  document.getElementById('kpi-revenue').textContent = d.revenue ? `€${d.revenue.toLocaleString('it-IT',{minimumFractionDigits:0})}` : '€0';
   document.getElementById('kpi-open-rate').textContent = `${d.openRate}%`;
   document.getElementById('kpi-ctr').textContent = `${d.clickRate}%`;
-  document.getElementById('kpi-conv').textContent = `${d.conversionRate}%`;
   document.getElementById('kpi-unsub').textContent = `${d.unsubscribeRate}%`;
+  // Calcola totale consegnate dai dati campagne
+  const totalDelivered = (d.campaigns || []).reduce((s, c) => s + (c.delivered || 0), 0);
+  document.getElementById('kpi-delivered').textContent = totalDelivered.toLocaleString('it-IT');
 
   const recent = (d.campaigns || []).slice(0, 5);
   const tbody = document.getElementById('tbody-overview');
@@ -386,7 +390,7 @@ function renderCampagne() {
       <td>${c.clickRate}%</td>
       <td>${c.unsubscribes}</td>
       <td>${c.spamComplaints}</td>
-      <td>${c.bounces}</td>
+      <td>${c.bounces ?? 0}</td>
     </tr>`).join('');
 }
 
@@ -408,27 +412,22 @@ let currentWeekLabel = '';
 let currentRangeStart = '';
 let currentRangeEnd = '';
 
+// Settimane fisse: W1=1-7, W2=8-14, W3=15-21, W4=22-28, W5=29-fine mese
 function getWeeksOfMonth(year, month) {
-  const weeks = [];
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-
-  let weekStart = new Date(firstDay);
-  weekStart.setDate(firstDay.getDate() - firstDay.getDay() + 1);
-  if (weekStart > firstDay) weekStart.setDate(weekStart.getDate() - 7);
-
-  let w = 1;
-  while (weekStart <= lastDay) {
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 6);
-    const start = new Date(Math.max(weekStart, firstDay));
-    const end = new Date(Math.min(weekEnd, lastDay));
-    weeks.push({ label: `W${w}`, start: fmtDate(start), end: fmtDate(end) });
-    weekStart.setDate(weekStart.getDate() + 7);
-    w++;
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const weeks = [
+    { label: 'W1', start: `${year}-${pad(month+1)}-01`, end: `${year}-${pad(month+1)}-07` },
+    { label: 'W2', start: `${year}-${pad(month+1)}-08`, end: `${year}-${pad(month+1)}-14` },
+    { label: 'W3', start: `${year}-${pad(month+1)}-15`, end: `${year}-${pad(month+1)}-21` },
+    { label: 'W4', start: `${year}-${pad(month+1)}-22`, end: `${year}-${pad(month+1)}-28` },
+  ];
+  if (lastDay >= 29) {
+    weeks.push({ label: 'W5', start: `${year}-${pad(month+1)}-29`, end: `${year}-${pad(month+1)}-${lastDay}` });
   }
   return weeks;
 }
+
+function pad(n) { return String(n).padStart(2, '0'); }
 
 function fmtDate(d) {
   return d.toISOString().split('T')[0];
@@ -440,21 +439,54 @@ function fmtDateIT(str) {
   return `${d}/${m}/${y}`;
 }
 
-function initReport() {
-  reportInitialized = true;
-  const now = new Date();
-  const weeks = getWeeksOfMonth(now.getFullYear(), now.getMonth());
+const MESI_IT = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+                  'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+
+let selectedReportYear, selectedReportMonth;
+
+function renderWeekButtons() {
   const container = document.getElementById('week-selector');
+  const weeks = getWeeksOfMonth(selectedReportYear, selectedReportMonth);
   container.innerHTML = weeks.map(w =>
     `<button class="btn-week" data-start="${w.start}" data-end="${w.end}" data-label="${w.label}">${w.label}</button>`
   ).join('');
-
   container.querySelectorAll('.btn-week').forEach(btn => {
     btn.addEventListener('click', () => {
-      container.querySelectorAll('.btn-week').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.btn-week').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      currentWeekLabel = btn.dataset.label;
+      const mName = MESI_IT[selectedReportMonth];
+      currentWeekLabel = `${mName} ${btn.dataset.label}`;
       loadReport(btn.dataset.start, btn.dataset.end);
+    });
+  });
+  // Seleziona W corrente se siamo nel mese attivo
+  const now = new Date();
+  if (now.getFullYear() === selectedReportYear && now.getMonth() === selectedReportMonth) {
+    const today = fmtDate(now);
+    const cur = weeks.find(w => today >= w.start && today <= w.end) || weeks[weeks.length - 1];
+    container.querySelector(`[data-label="${cur.label}"]`)?.click();
+  } else {
+    container.querySelector('.btn-week')?.click();
+  }
+}
+
+function initReport() {
+  reportInitialized = true;
+  const now = new Date();
+  selectedReportYear = now.getFullYear();
+  selectedReportMonth = now.getMonth();
+
+  // Selettore mese (mesi dell'anno corrente)
+  const monthSel = document.getElementById('month-selector');
+  monthSel.innerHTML = MESI_IT.map((m, i) =>
+    `<button class="btn-week${i === now.getMonth() ? ' active' : ''}" data-month="${i}">${m.slice(0,3)}</button>`
+  ).join('');
+  monthSel.querySelectorAll('.btn-week').forEach(btn => {
+    btn.addEventListener('click', () => {
+      monthSel.querySelectorAll('.btn-week').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedReportMonth = parseInt(btn.dataset.month);
+      renderWeekButtons();
     });
   });
 
@@ -462,18 +494,12 @@ function initReport() {
     const s = document.getElementById('range-start').value;
     const e = document.getElementById('range-end').value;
     if (!s || !e) return;
-    document.querySelectorAll('.btn-week').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#week-selector .btn-week').forEach(b => b.classList.remove('active'));
     currentWeekLabel = 'Custom';
     loadReport(s, e);
   });
 
-  // Auto-select current week
-  const today = fmtDate(now);
-  const currentWeek = weeks.find(w => today >= w.start && today <= w.end) || weeks[0];
-  if (currentWeek) {
-    const btn = container.querySelector(`[data-label="${currentWeek.label}"]`);
-    if (btn) btn.click();
-  }
+  renderWeekButtons();
 }
 
 async function loadReport(start, end) {
@@ -517,7 +543,7 @@ function renderReport() {
       <td>${c.clickRate}%</td>
       <td>${c.unsubscribes}</td>
       <td>${c.spamComplaints}</td>
-      <td>${c.bounces}</td>
+      <td>${c.bounces ?? 0}</td>
     </tr>`).join('');
 
   const t = d.totals;

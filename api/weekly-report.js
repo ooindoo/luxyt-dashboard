@@ -107,7 +107,7 @@ async function fetchStatsForCampaigns() {
         },
       }),
     },
-    8000
+    25000
   );
   if (!res.ok) return {};
   const json = await res.json();
@@ -217,6 +217,7 @@ router.get('/', async (req, res) => {
           unsubscribeRate: st.unsubscribe_rate ? parseFloat((st.unsubscribe_rate * 100).toFixed(2)) : 0,
           spamComplaints: Math.round(st.spam_complaints || 0),
           delivered: Math.round(st.delivered || 0),
+          bounces: Math.max(0, Math.round((st.recipients || 0) - (st.delivered || 0))),
           number,
         };
       })
@@ -233,6 +234,7 @@ router.get('/', async (req, res) => {
       unsubscribes: filtered.reduce((s, c) => s + c.unsubscribes, 0),
       spamComplaints: filtered.reduce((s, c) => s + c.spamComplaints, 0),
       delivered: filtered.reduce((s, c) => s + c.delivered, 0),
+      bounces: filtered.reduce((s, c) => s + c.bounces, 0),
       openRate: filtered.length ? parseFloat((filtered.reduce((s, c) => s + c.openRate, 0) / filtered.length).toFixed(1)) : 0,
       clickRate: filtered.length ? parseFloat((filtered.reduce((s, c) => s + c.clickRate, 0) / filtered.length).toFixed(1)) : 0,
     };

@@ -127,7 +127,7 @@ async function fetchCampaignStats() {
         },
       }),
     },
-    8000
+    25000
   );
   if (!res.ok) return {};
   const json = await res.json();
@@ -186,6 +186,8 @@ router.get('/', async (req, res) => {
         spamComplaints: Math.round(st.spam_complaints || 0),
         delivered: Math.round(st.delivered || 0),
         deliveryRate: st.delivery_rate ? parseFloat((st.delivery_rate * 100).toFixed(1)) : 0,
+        // bounces non esiste nelle statistiche Klaviyo 2024: si calcola come recipients - delivered
+        bounces: Math.max(0, Math.round((st.recipients || 0) - (st.delivered || 0))),
         number,
       };
     });
