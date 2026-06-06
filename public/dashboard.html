@@ -101,7 +101,7 @@
 
   <!-- ═══ PANORAMICA ═══ -->
   <section id="sec-panoramica" class="section active">
-    <p style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:14px">Dati ultimi 30 giorni</p>
+    <p style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:14px" id="kpi-period-label">Solo campagne email inviate — ultimi 30 giorni</p>
 
     <div class="kpi-grid" id="kpi-grid">
       <div class="kpi-card"><div class="kpi-label">Open Rate</div><div class="kpi-value" id="kpi-open-rate">—</div></div>
@@ -237,31 +237,47 @@ document.getElementById('hamburger').addEventListener('click', () => {
 
 // ── PANORAMICA ──
 async function loadPanoramica() {
-  // Fetcha KPI e campagne in parallelo
-  const [panorRes, campRes] = await Promise.all([
-    fetch('/api/panoramica-data', { headers: apiHeaders() }).catch(() => null),
-    fetch('/api/campaigns',       { headers: apiHeaders() }).catch(() => null),
-  ]);
+  // Una sola chiamata: /api/campaigns già filtrato (solo Sent, solo email, no flussi)
+  const campRes = await fetch('/api/campaigns', { headers: apiHeaders() }).catch(() => null);
 
-  // ── KPI ──────────────────────────────────────────────────────────────────
-  if (panorRes && panorRes.ok) {
-    const d = await panorRes.json().catch(() => ({}));
-    document.getElementById('kpi-open-rate').textContent = `${d.openRate ?? '—'}%`;
-    document.getElementById('kpi-ctr').textContent       = `${d.clickRate ?? '—'}%`;
-    document.getElementById('kpi-unsub').textContent     = `${d.unsubscribeRate ?? '—'}%`;
-    // totalDelivered ora arriva direttamente dall'API (pre-calcolato)
-    const totalDelivered = d.totalDelivered
-      ?? (d.campaigns || []).reduce((s, c) => s + (c.delivered || 0), 0);
-    document.getElementById('kpi-delivered').textContent = totalDelivered.toLocaleString('it-IT');
-  }
-
-  // ── Tabella ultime campagne ───────────────────────────────────────────────
   const tbody = document.getElementById('tbody-overview');
   if (!campRes || !campRes.ok) {
     tbody.innerHTML = '<tr><td colspan="5" class="no-data">Errore caricamento campagne</td></tr>';
     return;
   }
   const campaigns = await campRes.json().catch(() => []);
+
+  // ── Filtra ultimi 30 giorni (solo campagne Sent, no flussi — già garantito dall'API) ──
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  const recent = campaigns.filter(c => {
+    if (!c.sendDate) return false;
+    return new Date(c.sendDate + 'T00:00:00Z') >= cutoff;
+  });
+
+  // ── Aggiorna label con date precise ──────────────────────────────────────
+  const dateFrom = cutoff.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const dateTo   = new Date().toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' });
+  document.getElementById('kpi-period-label').textContent =
+    `Solo campagne email inviate · ${dateFrom} – ${dateTo} · ${recent.length} campagne`;
+
+  // ── KPI calcolati dai dati campagne (no flussi, no duplicati) ────────────
+  if (recent.length > 0) {
+    const avgOpen  = (recent.reduce((s,c) => s + c.openRate,  0) / recent.length).toFixed(1);
+    const avgCtr   = (recent.reduce((s,c) => s + c.clickRate, 0) / recent.length).toFixed(1);
+    const avgUnsub = (recent.reduce((s,c) => s + c.unsubscribeRate, 0) / recent.length).toFixed(2);
+    const totDel   = recent.reduce((s,c) => s + c.delivered, 0);
+    document.getElementById('kpi-open-rate').textContent = `${avgOpen}%`;
+    document.getElementById('kpi-ctr').textContent       = `${avgCtr}%`;
+    document.getElementById('kpi-unsub').textContent     = `${avgUnsub}%`;
+    document.getElementById('kpi-delivered').textContent = totDel.toLocaleString('it-IT');
+  } else {
+    ['kpi-open-rate','kpi-ctr','kpi-unsub'].forEach(id =>
+      document.getElementById(id).textContent = '—');
+    document.getElementById('kpi-delivered').textContent = '0';
+  }
+
+  // ── Tabella ultime 5 campagne ─────────────────────────────────────────────
   const top5 = campaigns.slice(0, 5);
   tbody.innerHTML = top5.length === 0
     ? '<tr><td colspan="5" class="no-data">Nessuna campagna</td></tr>'
