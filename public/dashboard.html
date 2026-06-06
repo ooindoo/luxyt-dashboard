@@ -310,7 +310,7 @@ async function loadCampagne() {
 
 function buildMonthFilters() {
   const months = [...new Set(allCampaigns
-    .filter(c => c.sendDate)
+    .filter(c => c.sendDate && c.sendDate >= '2026-01-01')
     .map(c => c.sendDate.slice(0, 7)))].sort().reverse();
 
   const container = document.getElementById('month-filters');
