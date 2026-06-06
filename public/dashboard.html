@@ -145,7 +145,7 @@
             <th data-col="recipients">Destinatari <span class="sort-arrow">↕</span></th>
             <th data-col="opens">Aperture <span class="sort-arrow">↕</span></th>
             <th data-col="openRate">Open Rate% <span class="sort-arrow">↕</span></th>
-            <th data-col="clicks">Click <span class="sort-arrow">↕</span></th>
+            <th data-col="clicks">Click Unici <span class="sort-arrow">↕</span></th>
             <th data-col="clickRate">Click Rate% <span class="sort-arrow">↕</span></th>
             <th data-col="unsubscribes">Unsub <span class="sort-arrow">↕</span></th>
             <th data-col="spamComplaints">Spam <span class="sort-arrow">↕</span></th>
@@ -175,7 +175,7 @@
             <th>Campaign Name</th><th>Lingua</th><th>Send Date</th><th>Send Time</th>
             <th>Subject</th><th>Preview Text</th>
             <th>Recipients</th><th>Opens</th><th>Open Rate%</th>
-            <th>Clicks</th><th>Click Rate%</th>
+            <th>Click Unici</th><th>Click Rate%</th>
             <th>Unsubscribes</th><th>Spam</th><th>Bounces</th>
           </tr>
         </thead>
@@ -498,7 +498,7 @@ function renderReport() {
         <div class="la-campaign-body" id="lab-report-${cid}">
           <div class="table-wrap">
             <table>
-              <thead><tr><th>URL</th><th>Unique Clicks</th><th>Total Clicks</th></tr></thead>
+              <thead><tr><th>URL</th><th>Clicker Unici</th><th>Click Totali</th></tr></thead>
               <tbody>${links.map(l => `
                 <tr>
                   <td class="url-cell"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url.length > 60 ? l.url.substring(0, 60) + '...' : l.url)}</a></td>
@@ -525,7 +525,7 @@ document.getElementById('btn-export-csv').addEventListener('click', () => {
   if (!currentReportData?.campaigns?.length) return;
   const BOM = '﻿';
   const cols = ['Campaign Name','Lingua','Send Date','Send Time','Subject','Preview Text',
-    'Recipients','Opens','Open Rate%','Clicks','Click Rate%','Unsubscribes','Spam Complaints','Bounces'];
+    'Recipients','Opens','Open Rate%','Click Unici','Click Rate%','Unsubscribes','Spam Complaints','Bounces'];
   const rows = [cols.join(';')];
   for (const c of currentReportData.campaigns) {
     rows.push([
@@ -599,7 +599,7 @@ async function loadLinkActivitySection() {
         body.innerHTML = `
           <div class="table-wrap">
             <table>
-              <thead><tr><th>URL</th><th>Unique Clicks</th><th>Total Clicks</th></tr></thead>
+              <thead><tr><th>URL</th><th>Clicker Unici</th><th>Click Totali</th></tr></thead>
               <tbody>${links.map(l => `
                 <tr>
                   <td class="url-cell"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url.length > 60 ? l.url.substring(0, 60) + '...' : l.url)}</a></td>
