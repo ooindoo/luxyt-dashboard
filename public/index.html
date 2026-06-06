@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Luxyt — Accesso</title>
+  <link rel="stylesheet" href="/assets/style.css" />
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-box">
+      <img src="/assets/luxyt-logo.png" alt="Luxyt" class="logo" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+      <div style="display:none;font-size:22px;font-weight:800;letter-spacing:-0.02em;margin-bottom:12px;">LUXYT</div>
+      <p class="login-subtitle">Pre-loved Resale Selection</p>
+      <input type="password" id="pwd" placeholder="Password" autocomplete="current-password" />
+      <button class="btn-primary" id="loginBtn">Login</button>
+      <div class="login-error" id="loginError"></div>
+    </div>
+  </div>
+
+  <script>
+    async function doLogin() {
+      const pwd = document.getElementById('pwd').value.trim();
+      const err = document.getElementById('loginError');
+      err.textContent = '';
+      if (!pwd) return;
+      try {
+        const res = await fetch(`/api/auth?password=${encodeURIComponent(pwd)}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.ok) {
+            localStorage.setItem('lx_token', pwd);
+            window.location.href = '/dashboard.html';
+            return;
+          }
+        }
+        err.textContent = 'Accesso negato';
+      } catch (e) {
+        err.textContent = 'Accesso negato';
+      }
+    }
+
+    document.getElementById('loginBtn').addEventListener('click', doLogin);
+    document.getElementById('pwd').addEventListener('keydown', e => {
+      if (e.key === 'Enter') doLogin();
+    });
+
+    if (localStorage.getItem('lx_token')) {
+      window.location.href = '/dashboard.html';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Luxyt — Dashboard</title>
+  <link rel="stylesheet" href="/assets/style.css" />
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="app-header">
+  <img src="/assets/luxyt-logo.png" alt="Luxyt" class="logo"
+       onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+  <div style="display:none;font-size:18px;font-weight:800;letter-spacing:-0.02em;">LUXYT</div>
+  <button class="hamburger" id="hamburger" aria-label="Menu">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <rect y="4" width="22" height="2" rx="1" fill="#1a1a1a"/>
+      <rect y="10" width="22" height="2" rx="1" fill="#1a1a1a"/>
+      <rect y="16" width="22" height="2" rx="1" fill="#1a1a1a"/>
+    </svg>
+  </button>
+</header>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="nav-item active" data-section="panoramica">
+    <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6">
+      <rect x="1" y="1" width="7" height="7" rx="1"/>
+      <rect x="10" y="1" width="7" height="7" rx="1"/>
+      <rect x="1" y="10" width="7" height="7" rx="1"/>
+      <rect x="10" y="10" width="7" height="7" rx="1"/>
+    </svg>
+    Panoramica
+  </div>
+  <div class="nav-item" data-section="campagne">
+    <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6">
+      <line x1="1" y1="4" x2="17" y2="4"/>
+      <line x1="1" y1="9" x2="17" y2="9"/>
+      <line x1="1" y1="14" x2="17" y2="14"/>
+    </svg>
+    Campagne
+  </div>
+  <div class="nav-item" data-section="report">
+    <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6">
+      <rect x="1" y="3" width="16" height="14" rx="1"/>
+      <line x1="1" y1="7" x2="17" y2="7"/>
+      <line x1="5" y1="3" x2="5" y2="1"/>
+      <line x1="13" y1="3" x2="13" y2="1"/>
+    </svg>
+    Report Settimanale
+  </div>
+  <div class="nav-item" data-section="link-activity">
+    <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6">
+      <path d="M7 11l-2 2a3 3 0 0 1-4-4l4-4a3 3 0 0 1 4.24.35"/>
+      <path d="M11 7l2-2a3 3 0 0 1 4 4l-4 4a3 3 0 0 1-4.24-.35"/>
+    </svg>
+    Link Activity
+  </div>
+</nav>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav" id="bottomNav">
+  <div class="bottom-nav-item active" data-section="panoramica">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
+      <rect x="1" y="1" width="8" height="8" rx="1"/>
+      <rect x="11" y="1" width="8" height="8" rx="1"/>
+      <rect x="1" y="11" width="8" height="8" rx="1"/>
+      <rect x="11" y="11" width="8" height="8" rx="1"/>
+    </svg>
+    Panoramica
+  </div>
+  <div class="bottom-nav-item" data-section="campagne">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
+      <line x1="2" y1="5" x2="18" y2="5"/>
+      <line x1="2" y1="10" x2="18" y2="10"/>
+      <line x1="2" y1="15" x2="18" y2="15"/>
+    </svg>
+    Campagne
+  </div>
+  <div class="bottom-nav-item" data-section="report">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
+      <rect x="2" y="4" width="16" height="14" rx="1"/>
+      <line x1="2" y1="8" x2="18" y2="8"/>
+      <line x1="6" y1="4" x2="6" y2="2"/>
+      <line x1="14" y1="4" x2="14" y2="2"/>
+    </svg>
+    Report
+  </div>
+  <div class="bottom-nav-item" data-section="link-activity">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
+      <path d="M8 12l-2 2a3.5 3.5 0 0 1-5-5l4-4a3.5 3.5 0 0 1 5 1"/>
+      <path d="M12 8l2-2a3.5 3.5 0 0 1 5 5l-4 4a3.5 3.5 0 0 1-5-1"/>
+    </svg>
+    Link
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main-content">
+
+  <!-- ═══ PANORAMICA ═══ -->
+  <section id="sec-panoramica" class="section active">
+    <div id="ai-summary-box"></div>
+
+    <div class="kpi-grid" id="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">Revenue</div><div class="kpi-value" id="kpi-revenue">—</div></div>
+      <div class="kpi-card"><div class="kpi-label">Open Rate</div><div class="kpi-value" id="kpi-open-rate">—</div></div>
+      <div class="kpi-card"><div class="kpi-label">CTR</div><div class="kpi-value" id="kpi-ctr">—</div></div>
+      <div class="kpi-card"><div class="kpi-label">Conversion Rate</div><div class="kpi-value" id="kpi-conv">—</div></div>
+      <div class="kpi-card"><div class="kpi-label">Unsub Rate</div><div class="kpi-value" id="kpi-unsub">—</div></div>
+    </div>
+
+    <div class="section-bar">Ultime Campagne</div>
+    <div class="table-wrap">
+      <table id="table-overview">
+        <thead>
+          <tr>
+            <th>Nome</th><th>Data</th><th>Open Rate</th><th>CTR</th><th>Unsubscribes</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-overview"><tr><td colspan="5" class="no-data">Caricamento...</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══ CAMPAGNE ═══ -->
+  <section id="sec-campagne" class="section">
+    <div class="section-bar">Campagne</div>
+    <div class="filters" id="filters-campagne">
+      <strong style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em">Lingua:</strong>
+      <label class="filter-group"><input type="checkbox" id="f-ita" checked> ITA</label>
+      <label class="filter-group"><input type="checkbox" id="f-eng" checked> ENG</label>
+      <span style="width:1px;height:20px;background:#e0e0e0;margin:0 4px"></span>
+      <strong style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em">Mese:</strong>
+      <div id="month-filters" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+    </div>
+    <div class="table-wrap">
+      <table id="table-campagne">
+        <thead>
+          <tr>
+            <th data-col="name">Nome <span class="sort-arrow">↕</span></th>
+            <th data-col="language">Lingua <span class="sort-arrow">↕</span></th>
+            <th data-col="sendDate">Data <span class="sort-arrow">↕</span></th>
+            <th data-col="sendTime">Orario <span class="sort-arrow">↕</span></th>
+            <th data-col="subject">Subject</th>
+            <th data-col="previewText">Preview</th>
+            <th data-col="recipients">Destinatari <span class="sort-arrow">↕</span></th>
+            <th data-col="opens">Aperture <span class="sort-arrow">↕</span></th>
+            <th data-col="openRate">Open Rate% <span class="sort-arrow">↕</span></th>
+            <th data-col="clicks">Click <span class="sort-arrow">↕</span></th>
+            <th data-col="clickRate">Click Rate% <span class="sort-arrow">↕</span></th>
+            <th data-col="unsubscribes">Unsub <span class="sort-arrow">↕</span></th>
+            <th data-col="spamComplaints">Spam <span class="sort-arrow">↕</span></th>
+            <th data-col="bounces">Bounce <span class="sort-arrow">↕</span></th>
+          </tr>
+        </thead>
+        <tbody id="tbody-campagne"><tr><td colspan="14" class="no-data">Caricamento...</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══ REPORT SETTIMANALE ═══ -->
+  <section id="sec-report" class="section">
+    <div class="week-selector" id="week-selector"></div>
+    <div class="date-range-inputs" style="margin-bottom:20px">
+      <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em">Personalizzato:</span>
+      <input type="date" id="range-start">
+      <span>—</span>
+      <input type="date" id="range-end">
+      <button class="btn-secondary" id="btn-custom-range">Applica</button>
+    </div>
+    <div class="report-header-text" id="report-header-text"></div>
+
+    <div class="section-bar">Campagne</div>
+    <div class="table-wrap">
+      <table id="table-report">
+        <thead>
+          <tr>
+            <th>Campaign Name</th><th>Lingua</th><th>Send Date</th><th>Send Time</th>
+            <th>Subject</th><th>Preview Text</th>
+            <th>Recipients</th><th>Opens</th><th>Open Rate%</th>
+            <th>Clicks</th><th>Click Rate%</th>
+            <th>Unsubscribes</th><th>Spam</th><th>Bounces</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-report"><tr><td colspan="14" class="no-data">Seleziona un periodo</td></tr></tbody>
+      </table>
+    </div>
+
+    <div id="report-link-activity"></div>
+
+    <div style="margin-top:20px">
+      <button class="btn-primary" id="btn-export-csv">Esporta CSV</button>
+    </div>
+  </section>
+
+  <!-- ═══ LINK ACTIVITY ═══ -->
+  <section id="sec-link-activity" class="section">
+    <div class="section-bar">Link Activity</div>
+    <div id="link-activity-list"><p class="no-data" style="padding:16px">Caricamento campagne...</p></div>
+  </section>
+
+</main>
+
+<script>
+// ── AUTH CHECK ──
+const TOKEN = localStorage.getItem('lx_token');
+if (!TOKEN) window.location.href = '/';
+
+function apiHeaders() {
+  return { 'x-auth-token': TOKEN, 'Content-Type': 'application/json' };
+}
+
+// ── NAVIGATION ──
+let currentSection = 'panoramica';
+const sections = ['panoramica','campagne','report','link-activity'];
+
+function showSection(name) {
+  currentSection = name;
+  sections.forEach(s => {
+    document.getElementById(`sec-${s}`)?.classList.toggle('active', s === name);
+  });
+  document.querySelectorAll('.nav-item, .bottom-nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.section === name);
+  });
+  if (name === 'campagne' && !campaignsLoaded) loadCampagne();
+  if (name === 'report' && !reportInitialized) initReport();
+  if (name === 'link-activity' && !laLoaded) loadLinkActivitySection();
+}
+
+document.querySelectorAll('.nav-item, .bottom-nav-item').forEach(el => {
+  el.addEventListener('click', () => {
+    showSection(el.dataset.section);
+    document.getElementById('sidebar').classList.remove('mobile-open');
+  });
+});
+
+document.getElementById('hamburger').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.toggle('mobile-open');
+});
+
+// ── PANORAMICA ──
+async function loadPanoramica() {
+  const [ovRes] = await Promise.all([
+    fetch('/api/panoramica-data', { headers: apiHeaders() }).catch(() => null),
+  ]);
+
+  if (!ovRes || !ovRes.ok) return;
+  const d = await ovRes.json();
+
+  document.getElementById('kpi-revenue').textContent = d.revenue ? `€${d.revenue.toLocaleString('it-IT',{minimumFractionDigits:0})}` : '€0';
+  document.getElementById('kpi-open-rate').textContent = `${d.openRate}%`;
+  document.getElementById('kpi-ctr').textContent = `${d.clickRate}%`;
+  document.getElementById('kpi-conv').textContent = `${d.conversionRate}%`;
+  document.getElementById('kpi-unsub').textContent = `${d.unsubscribeRate}%`;
+
+  const recent = (d.campaigns || []).slice(0, 5);
+  const tbody = document.getElementById('tbody-overview');
+  if (recent.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="no-data">Nessuna campagna</td></tr>';
+  } else {
+    tbody.innerHTML = recent.map(c => `
+      <tr>
+        <td>${esc(c.id || '')}</td>
+        <td>—</td>
+        <td>${c.openRate}%</td>
+        <td>${c.clickRate}%</td>
+        <td>${c.unsubscribes}</td>
+      </tr>`).join('');
+  }
+
+  // Load named campaign data for overview table
+  fetch('/api/campaigns', { headers: apiHeaders() })
+    .then(r => r.json())
+    .then(campaigns => {
+      const top5 = campaigns.slice(0, 5);
+      tbody.innerHTML = top5.length === 0
+        ? '<tr><td colspan="5" class="no-data">Nessuna campagna</td></tr>'
+        : top5.map(c => `
+          <tr>
+            <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis">${esc(c.name)}</td>
+            <td>${c.sendDate || '—'}</td>
+            <td>${c.openRate}%</td>
+            <td>${c.clickRate}%</td>
+            <td>${c.unsubscribes}</td>
+          </tr>`).join('');
+    }).catch(() => {});
+
+  // AI Summary (parallel, non-blocking)
+  fetch('/api/ai-summary', {
+    method: 'POST',
+    headers: apiHeaders(),
+    body: JSON.stringify(d),
+  }).then(r => r.json()).then(({ summary }) => {
+    if (summary) {
+      document.getElementById('ai-summary-box').innerHTML =
+        `<div class="ai-summary">${esc(summary)}</div>`;
+    }
+  }).catch(() => {});
+}
+
+loadPanoramica();
+
+// ── CAMPAGNE ──
+let allCampaigns = [];
+let campaignsLoaded = false;
+let sortCol = 'sendDate';
+let sortDir = -1;
+
+async function loadCampagne() {
+  campaignsLoaded = true;
+  const res = await fetch('/api/campaigns', { headers: apiHeaders() }).catch(() => null);
+  if (!res || !res.ok) return;
+  allCampaigns = await res.json();
+  buildMonthFilters();
+  renderCampagne();
+}
+
+function buildMonthFilters() {
+  const months = [...new Set(allCampaigns
+    .filter(c => c.sendDate)
+    .map(c => c.sendDate.slice(0, 7)))].sort().reverse();
+
+  const container = document.getElementById('month-filters');
+  container.innerHTML = months.map(m => {
+    const [y, mo] = m.split('-');
+    const label = new Date(y, mo - 1).toLocaleDateString('it-IT', { month: 'short', year: '2-digit' });
+    return `<label class="filter-group"><input type="checkbox" class="f-month" value="${m}" checked> ${label}</label>`;
+  }).join('');
+
+  container.querySelectorAll('.f-month').forEach(cb => cb.addEventListener('change', renderCampagne));
+}
+
+function getActiveMonths() {
+  return [...document.querySelectorAll('.f-month:checked')].map(el => el.value);
+}
+
+function renderCampagne() {
+  const showIta = document.getElementById('f-ita').checked;
+  const showEng = document.getElementById('f-eng').checked;
+  const activeMonths = getActiveMonths();
+
+  let filtered = allCampaigns.filter(c => {
+    if (c.language === 'ITA' && !showIta) return false;
+    if (c.language === 'ENG' && !showEng) return false;
+    if (c.language !== 'ITA' && c.language !== 'ENG' && !showIta && !showEng) return false;
+    if (c.sendDate && activeMonths.length > 0) {
+      if (!activeMonths.includes(c.sendDate.slice(0, 7))) return false;
+    }
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    if (va == null) va = '';
+    if (vb == null) vb = '';
+    if (typeof va === 'string') return va.localeCompare(vb) * sortDir;
+    return (va - vb) * sortDir;
+  });
+
+  document.querySelectorAll('#table-campagne th').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.col === sortCol);
+    const arrow = th.querySelector('.sort-arrow');
+    if (arrow && th.dataset.col === sortCol) arrow.textContent = sortDir === 1 ? '↑' : '↓';
+    else if (arrow) arrow.textContent = '↕';
+  });
+
+  const tbody = document.getElementById('tbody-campagne');
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="14" class="no-data">Nessuna campagna trovata</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(c => `
+    <tr>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(c.name)}</td>
+      <td>${esc(c.language)}</td>
+      <td>${c.sendDate || '—'}</td>
+      <td>${c.sendTime || '—'}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(c.subject)}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${esc(c.previewText)}</td>
+      <td>${c.recipients.toLocaleString('it-IT')}</td>
+      <td>${c.opens.toLocaleString('it-IT')}</td>
+      <td>${c.openRate}%</td>
+      <td>${c.clicks.toLocaleString('it-IT')}</td>
+      <td>${c.clickRate}%</td>
+      <td>${c.unsubscribes}</td>
+      <td>${c.spamComplaints}</td>
+      <td>${c.bounces}</td>
+    </tr>`).join('');
+}
+
+document.getElementById('f-ita').addEventListener('change', renderCampagne);
+document.getElementById('f-eng').addEventListener('change', renderCampagne);
+
+document.querySelectorAll('#table-campagne th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    if (sortCol === th.dataset.col) sortDir *= -1;
+    else { sortCol = th.dataset.col; sortDir = -1; }
+    renderCampagne();
+  });
+});
+
+// ── REPORT SETTIMANALE ──
+let reportInitialized = false;
+let currentReportData = null;
+let currentWeekLabel = '';
+let currentRangeStart = '';
+let currentRangeEnd = '';
+
+function getWeeksOfMonth(year, month) {
+  const weeks = [];
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+
+  let weekStart = new Date(firstDay);
+  weekStart.setDate(firstDay.getDate() - firstDay.getDay() + 1);
+  if (weekStart > firstDay) weekStart.setDate(weekStart.getDate() - 7);
+
+  let w = 1;
+  while (weekStart <= lastDay) {
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    const start = new Date(Math.max(weekStart, firstDay));
+    const end = new Date(Math.min(weekEnd, lastDay));
+    weeks.push({ label: `W${w}`, start: fmtDate(start), end: fmtDate(end) });
+    weekStart.setDate(weekStart.getDate() + 7);
+    w++;
+  }
+  return weeks;
+}
+
+function fmtDate(d) {
+  return d.toISOString().split('T')[0];
+}
+
+function fmtDateIT(str) {
+  if (!str) return '';
+  const [y, m, d] = str.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function initReport() {
+  reportInitialized = true;
+  const now = new Date();
+  const weeks = getWeeksOfMonth(now.getFullYear(), now.getMonth());
+  const container = document.getElementById('week-selector');
+  container.innerHTML = weeks.map(w =>
+    `<button class="btn-week" data-start="${w.start}" data-end="${w.end}" data-label="${w.label}">${w.label}</button>`
+  ).join('');
+
+  container.querySelectorAll('.btn-week').forEach(btn => {
+    btn.addEventListener('click', () => {
+      container.querySelectorAll('.btn-week').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentWeekLabel = btn.dataset.label;
+      loadReport(btn.dataset.start, btn.dataset.end);
+    });
+  });
+
+  document.getElementById('btn-custom-range').addEventListener('click', () => {
+    const s = document.getElementById('range-start').value;
+    const e = document.getElementById('range-end').value;
+    if (!s || !e) return;
+    document.querySelectorAll('.btn-week').forEach(b => b.classList.remove('active'));
+    currentWeekLabel = 'Custom';
+    loadReport(s, e);
+  });
+
+  // Auto-select current week
+  const today = fmtDate(now);
+  const currentWeek = weeks.find(w => today >= w.start && today <= w.end) || weeks[0];
+  if (currentWeek) {
+    const btn = container.querySelector(`[data-label="${currentWeek.label}"]`);
+    if (btn) btn.click();
+  }
+}
+
+async function loadReport(start, end) {
+  currentRangeStart = start;
+  currentRangeEnd = end;
+  document.getElementById('tbody-report').innerHTML = '<tr><td colspan="14" class="no-data">Caricamento...</td></tr>';
+  document.getElementById('report-link-activity').innerHTML = '';
+
+  const res = await fetch(`/api/weekly-report?start=${start}&end=${end}`, { headers: apiHeaders() }).catch(() => null);
+  if (!res || !res.ok) return;
+  currentReportData = await res.json();
+  renderReport();
+}
+
+function renderReport() {
+  const d = currentReportData;
+  if (!d) return;
+
+  const now = new Date().toLocaleDateString('it-IT');
+  document.getElementById('report-header-text').textContent =
+    `LUXYT — Report Campagne | ${currentWeekLabel} - ${fmtDateIT(currentRangeStart)} / ${fmtDateIT(currentRangeEnd)} | Generato il ${now}`;
+
+  const tbody = document.getElementById('tbody-report');
+  if (!d.campaigns.length) {
+    tbody.innerHTML = '<tr><td colspan="14" class="no-data">Nessuna campagna nel periodo selezionato</td></tr>';
+    return;
+  }
+
+  const rows = d.campaigns.map(c => `
+    <tr>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(c.name)}</td>
+      <td>${esc(c.language)}</td>
+      <td>${c.sendDate || '—'}</td>
+      <td>${c.sendTime || '—'}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${esc(c.subject)}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${esc(c.previewText)}</td>
+      <td>${c.recipients.toLocaleString('it-IT')}</td>
+      <td>${c.opens.toLocaleString('it-IT')}</td>
+      <td>${c.openRate}%</td>
+      <td>${c.clicks.toLocaleString('it-IT')}</td>
+      <td>${c.clickRate}%</td>
+      <td>${c.unsubscribes}</td>
+      <td>${c.spamComplaints}</td>
+      <td>${c.bounces}</td>
+    </tr>`).join('');
+
+  const t = d.totals;
+  const totalRow = `
+    <tr class="row-total">
+      <td colspan="6">TOTALE SETTIMANA</td>
+      <td>${(t.recipients||0).toLocaleString('it-IT')}</td>
+      <td>${(t.opens||0).toLocaleString('it-IT')}</td>
+      <td>${t.openRate||0}%</td>
+      <td>${(t.clicks||0).toLocaleString('it-IT')}</td>
+      <td>${t.clickRate||0}%</td>
+      <td>${t.unsubscribes||0}</td>
+      <td>${t.spamComplaints||0}</td>
+      <td>${t.bounces||0}</td>
+    </tr>`;
+
+  tbody.innerHTML = rows + totalRow;
+
+  // Link activity section
+  const laContainer = document.getElementById('report-link-activity');
+  const laEntries = Object.entries(d.linkActivity || {});
+  if (laEntries.length === 0) {
+    laContainer.innerHTML = '';
+    return;
+  }
+
+  laContainer.innerHTML = '<div class="section-bar" style="margin-top:24px;margin-bottom:8px">Link Activity</div>' +
+    laEntries.map(([cid, links]) => {
+      const camp = d.campaigns.find(c => c.id === cid);
+      const name = camp ? camp.name : cid;
+      return `
+        <div class="la-campaign-header" data-id="${cid}">
+          <span>${esc(name)}</span>
+          <svg class="arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="4,6 8,10 12,6"/>
+          </svg>
+        </div>
+        <div class="la-campaign-body" id="lab-report-${cid}">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>URL</th><th>Unique Clicks</th><th>Total Clicks</th></tr></thead>
+              <tbody>${links.map(l => `
+                <tr>
+                  <td class="url-cell"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url.length > 50 ? l.url.slice(0, 50) + '…' : l.url)}</a></td>
+                  <td>${l.uniqueClicks}</td>
+                  <td>${l.totalClicks}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+    }).join('');
+
+  laContainer.querySelectorAll('.la-campaign-header').forEach(header => {
+    header.addEventListener('click', () => {
+      header.classList.toggle('expanded');
+      const body = document.getElementById(`lab-report-${header.dataset.id}`);
+      body?.classList.toggle('open');
+    });
+  });
+}
+
+// ── CSV EXPORT ──
+document.getElementById('btn-export-csv').addEventListener('click', () => {
+  if (!currentReportData?.campaigns?.length) return;
+  const BOM = '﻿';
+  const cols = ['Campaign Name','Lingua','Send Date','Send Time','Subject','Preview Text',
+    'Recipients','Opens','Open Rate%','Clicks','Click Rate%','Unsubscribes','Spam Complaints','Bounces'];
+  const rows = [cols.join(';')];
+  for (const c of currentReportData.campaigns) {
+    rows.push([
+      csvCell(c.name), csvCell(c.language), csvCell(c.sendDate||''), csvCell(c.sendTime||''),
+      csvCell(c.subject), csvCell(c.previewText),
+      c.recipients, c.opens, c.openRate+'%', c.clicks, c.clickRate+'%',
+      c.unsubscribes, c.spamComplaints, c.bounces
+    ].join(';'));
+  }
+  const t = currentReportData.totals;
+  rows.push([
+    'TOTALE SETTIMANA','','','','','',
+    t.recipients||0, t.opens||0, (t.openRate||0)+'%', t.clicks||0, (t.clickRate||0)+'%',
+    t.unsubscribes||0, t.spamComplaints||0, t.bounces||0
+  ].join(';'));
+
+  const dateStr = currentRangeStart.replace(/-/g,'');
+  const blob = new Blob([BOM + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `LUXYT_Report_${currentWeekLabel}_${dateStr}.csv`;
+  a.click();
+});
+
+// ── LINK ACTIVITY ──
+let laLoaded = false;
+
+async function loadLinkActivitySection() {
+  laLoaded = true;
+  const res = await fetch('/api/campaigns', { headers: apiHeaders() }).catch(() => null);
+  if (!res || !res.ok) return;
+  const campaigns = await res.json();
+
+  const container = document.getElementById('link-activity-list');
+  if (!campaigns.length) {
+    container.innerHTML = '<p class="no-data" style="padding:16px">Nessuna campagna disponibile</p>';
+    return;
+  }
+
+  container.innerHTML = campaigns.map(c => `
+    <div class="la-campaign-header" data-id="${c.id}">
+      <span>${esc(c.name)} ${c.sendDate ? `<span style="color:#888;font-weight:400">${c.sendDate}</span>` : ''}</span>
+      <svg class="arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="4,6 8,10 12,6"/>
+      </svg>
+    </div>
+    <div class="la-campaign-body" id="lab-${c.id}"></div>
+  `).join('');
+
+  container.querySelectorAll('.la-campaign-header').forEach(header => {
+    header.addEventListener('click', async () => {
+      const id = header.dataset.id;
+      const body = document.getElementById(`lab-${id}`);
+      const wasOpen = body.classList.contains('open');
+      header.classList.toggle('expanded', !wasOpen);
+      body.classList.toggle('open', !wasOpen);
+
+      if (!wasOpen && !body.dataset.loaded) {
+        body.dataset.loaded = '1';
+        body.innerHTML = '<p style="padding:12px 16px;color:#888;font-size:13px">Caricamento...</p>';
+        const r = await fetch(`/api/link-activity?campaign_id=${id}`, { headers: apiHeaders() }).catch(() => null);
+        if (!r || !r.ok) {
+          body.innerHTML = '<p style="padding:12px 16px;color:#888;font-size:13px">Nessun click registrato per questa campagna</p>';
+          return;
+        }
+        const links = await r.json();
+        if (!links.length) {
+          body.innerHTML = '<p style="padding:12px 16px;color:#888;font-size:13px">Nessun click registrato per questa campagna</p>';
+          return;
+        }
+        body.innerHTML = `
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>URL</th><th>Unique Clicks</th><th>Total Clicks</th></tr></thead>
+              <tbody>${links.map(l => `
+                <tr>
+                  <td class="url-cell"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url.length > 50 ? l.url.slice(0,50)+'…' : l.url)}</a></td>
+                  <td>${l.uniqueClicks}</td>
+                  <td>${l.totalClicks}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      }
+    });
+  });
+}
+
+// ── UTILS ──
+function esc(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+function csvCell(v) {
+  const s = String(v ?? '');
+  return s.includes(';') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g,'""')}"` : s;
+}
+</script>
+</body>
+</html>
