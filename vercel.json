@@ -20,6 +20,10 @@
       "dest": "/public/assets/$1"
     },
     {
+      "src": "/dashboard.html",
+      "dest": "/public/dashboard.html"
+    },
+    {
       "src": "/(.*\\.(css|js|ico|png|jpg|jpeg|svg|woff|woff2|ttf|map))",
       "dest": "/public/$1"
     },
