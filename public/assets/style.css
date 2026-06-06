@@ -207,18 +207,10 @@ body {
 /* ── TABLES ── */
 .table-wrap {
   overflow-x: auto;
-  position: relative;
   border: 1px solid var(--gray-light);
   margin-bottom: 24px;
 }
-.table-wrap::after {
-  content: '';
-  position: absolute;
-  top: 0; right: 0; bottom: 0;
-  width: 32px;
-  background: linear-gradient(to right, transparent, rgba(255,255,255,0.9));
-  pointer-events: none;
-}
+/* .table-wrap::after gradiente rimosso */
 table {
   width: 100%;
   border-collapse: collapse;

@@ -101,7 +101,6 @@
 
   <!-- ═══ PANORAMICA ═══ -->
   <section id="sec-panoramica" class="section active">
-    <div id="ai-summary-box"></div>
 
     <div class="kpi-grid" id="kpi-grid">
       <div class="kpi-card"><div class="kpi-label">Open Rate</div><div class="kpi-value" id="kpi-open-rate">—</div></div>
@@ -109,6 +108,7 @@
       <div class="kpi-card"><div class="kpi-label">Unsub Rate</div><div class="kpi-value" id="kpi-unsub">—</div></div>
       <div class="kpi-card"><div class="kpi-label">Consegnate</div><div class="kpi-value" id="kpi-delivered">—</div></div>
     </div>
+    <p style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:20px">Dati ultimi 30 giorni</p>
 
     <div class="section-bar">Ultime Campagne</div>
     <div class="table-wrap">
@@ -142,8 +142,6 @@
             <th data-col="language">Lingua <span class="sort-arrow">↕</span></th>
             <th data-col="sendDate">Data <span class="sort-arrow">↕</span></th>
             <th data-col="sendTime">Orario <span class="sort-arrow">↕</span></th>
-            <th data-col="subject">Subject</th>
-            <th data-col="previewText">Preview</th>
             <th data-col="recipients">Destinatari <span class="sort-arrow">↕</span></th>
             <th data-col="opens">Aperture <span class="sort-arrow">↕</span></th>
             <th data-col="openRate">Open Rate% <span class="sort-arrow">↕</span></th>
@@ -154,24 +152,18 @@
             <th data-col="bounces">Bounce <span class="sort-arrow">↕</span></th>
           </tr>
         </thead>
-        <tbody id="tbody-campagne"><tr><td colspan="14" class="no-data">Caricamento...</td></tr></tbody>
+        <tbody id="tbody-campagne"><tr><td colspan="12" class="no-data">Caricamento...</td></tr></tbody>
       </table>
     </div>
   </section>
 
   <!-- ═══ REPORT SETTIMANALE ═══ -->
   <section id="sec-report" class="section">
-    <div id="month-selector-wrap" style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-      <strong style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em">Mese:</strong>
-      <div id="month-selector" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-    </div>
-    <div class="week-selector" id="week-selector" style="margin-bottom:16px"></div>
     <div class="date-range-inputs" style="margin-bottom:20px">
-      <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em">Personalizzato:</span>
       <input type="date" id="range-start">
-      <span>—</span>
+      <span style="color:#888">—</span>
       <input type="date" id="range-end">
-      <button class="btn-secondary" id="btn-custom-range">Applica</button>
+      <button class="btn-primary" id="btn-custom-range">Applica</button>
     </div>
     <div class="report-header-text" id="report-header-text"></div>
 
@@ -284,24 +276,14 @@ async function loadPanoramica() {
         : top5.map(c => `
           <tr>
             <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis">${esc(c.name)}</td>
-            <td>${c.sendDate || '—'}</td>
+            <td>${formatDate(c.sendDate)}</td>
             <td>${c.openRate}%</td>
             <td>${c.clickRate}%</td>
             <td>${c.unsubscribes}</td>
           </tr>`).join('');
     }).catch(() => {});
 
-  // AI Summary (parallel, non-blocking)
-  fetch('/api/ai-summary', {
-    method: 'POST',
-    headers: apiHeaders(),
-    body: JSON.stringify(d),
-  }).then(r => r.json()).then(({ summary }) => {
-    if (summary) {
-      document.getElementById('ai-summary-box').innerHTML =
-        `<div class="ai-summary">${esc(summary)}</div>`;
-    }
-  }).catch(() => {});
+  // AI Summary rimosso
 }
 
 loadPanoramica();
@@ -377,12 +359,10 @@ function renderCampagne() {
   }
   tbody.innerHTML = filtered.map(c => `
     <tr>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(c.name)}</td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name)}</td>
       <td>${esc(c.language)}</td>
-      <td>${c.sendDate || '—'}</td>
+      <td>${formatDate(c.sendDate)}</td>
       <td>${c.sendTime || '—'}</td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(c.subject)}</td>
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${esc(c.previewText)}</td>
       <td>${c.recipients.toLocaleString('it-IT')}</td>
       <td>${c.opens.toLocaleString('it-IT')}</td>
       <td>${c.openRate}%</td>
@@ -412,94 +392,28 @@ let currentWeekLabel = '';
 let currentRangeStart = '';
 let currentRangeEnd = '';
 
-// Settimane fisse: W1=1-7, W2=8-14, W3=15-21, W4=22-28, W5=29-fine mese
-function getWeeksOfMonth(year, month) {
-  const lastDay = new Date(year, month + 1, 0).getDate();
-  const weeks = [
-    { label: 'W1', start: `${year}-${pad(month+1)}-01`, end: `${year}-${pad(month+1)}-07` },
-    { label: 'W2', start: `${year}-${pad(month+1)}-08`, end: `${year}-${pad(month+1)}-14` },
-    { label: 'W3', start: `${year}-${pad(month+1)}-15`, end: `${year}-${pad(month+1)}-21` },
-    { label: 'W4', start: `${year}-${pad(month+1)}-22`, end: `${year}-${pad(month+1)}-28` },
-  ];
-  if (lastDay >= 29) {
-    weeks.push({ label: 'W5', start: `${year}-${pad(month+1)}-29`, end: `${year}-${pad(month+1)}-${lastDay}` });
-  }
-  return weeks;
-}
-
-function pad(n) { return String(n).padStart(2, '0'); }
-
-function fmtDate(d) {
-  return d.toISOString().split('T')[0];
-}
-
 function fmtDateIT(str) {
   if (!str) return '';
   const [y, m, d] = str.split('-');
   return `${d}/${m}/${y}`;
 }
 
-const MESI_IT = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
-                  'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
-
-let selectedReportYear, selectedReportMonth;
-
-function renderWeekButtons() {
-  const container = document.getElementById('week-selector');
-  const weeks = getWeeksOfMonth(selectedReportYear, selectedReportMonth);
-  container.innerHTML = weeks.map(w =>
-    `<button class="btn-week" data-start="${w.start}" data-end="${w.end}" data-label="${w.label}">${w.label}</button>`
-  ).join('');
-  container.querySelectorAll('.btn-week').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.btn-week').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const mName = MESI_IT[selectedReportMonth];
-      currentWeekLabel = `${mName} ${btn.dataset.label}`;
-      loadReport(btn.dataset.start, btn.dataset.end);
-    });
-  });
-  // Seleziona W corrente se siamo nel mese attivo
-  const now = new Date();
-  if (now.getFullYear() === selectedReportYear && now.getMonth() === selectedReportMonth) {
-    const today = fmtDate(now);
-    const cur = weeks.find(w => today >= w.start && today <= w.end) || weeks[weeks.length - 1];
-    container.querySelector(`[data-label="${cur.label}"]`)?.click();
-  } else {
-    container.querySelector('.btn-week')?.click();
-  }
+function formatDate(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function initReport() {
   reportInitialized = true;
-  const now = new Date();
-  selectedReportYear = now.getFullYear();
-  selectedReportMonth = now.getMonth();
-
-  // Selettore mese (mesi dell'anno corrente)
-  const monthSel = document.getElementById('month-selector');
-  monthSel.innerHTML = MESI_IT.map((m, i) =>
-    `<button class="btn-week${i === now.getMonth() ? ' active' : ''}" data-month="${i}">${m.slice(0,3)}</button>`
-  ).join('');
-  monthSel.querySelectorAll('.btn-week').forEach(btn => {
-    btn.addEventListener('click', () => {
-      monthSel.querySelectorAll('.btn-week').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      selectedReportMonth = parseInt(btn.dataset.month);
-      renderWeekButtons();
-    });
-  });
 
   document.getElementById('btn-custom-range').addEventListener('click', () => {
     const s = document.getElementById('range-start').value;
     const e = document.getElementById('range-end').value;
     if (!s || !e) return;
-    document.querySelectorAll('#week-selector .btn-week').forEach(b => b.classList.remove('active'));
-    currentWeekLabel = 'Custom';
+    currentWeekLabel = '';
     loadReport(s, e);
   });
-
-  renderWeekButtons();
 }
 
 async function loadReport(start, end) {
@@ -518,9 +432,9 @@ function renderReport() {
   const d = currentReportData;
   if (!d) return;
 
-  const now = new Date().toLocaleDateString('it-IT');
+  const today = new Date().toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
   document.getElementById('report-header-text').textContent =
-    `LUXYT — Report Campagne | ${currentWeekLabel} - ${fmtDateIT(currentRangeStart)} / ${fmtDateIT(currentRangeEnd)} | Generato il ${now}`;
+    `LUXYT — Report Campagne | ${fmtDateIT(currentRangeStart)} / ${fmtDateIT(currentRangeEnd)} | Generato il ${today}`;
 
   const tbody = document.getElementById('tbody-report');
   if (!d.campaigns.length) {
@@ -530,9 +444,9 @@ function renderReport() {
 
   const rows = d.campaigns.map(c => `
     <tr>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(c.name)}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name)}</td>
       <td>${esc(c.language)}</td>
-      <td>${c.sendDate || '—'}</td>
+      <td>${formatDate(c.sendDate)}</td>
       <td>${c.sendTime || '—'}</td>
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${esc(c.subject)}</td>
       <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${esc(c.previewText)}</td>
@@ -615,7 +529,7 @@ document.getElementById('btn-export-csv').addEventListener('click', () => {
   const rows = [cols.join(';')];
   for (const c of currentReportData.campaigns) {
     rows.push([
-      csvCell(c.name), csvCell(c.language), csvCell(c.sendDate||''), csvCell(c.sendTime||''),
+      csvCell(c.name), csvCell(c.language), csvCell(formatDate(c.sendDate)), csvCell(c.sendTime||''),
       csvCell(c.subject), csvCell(c.previewText),
       c.recipients, c.opens, c.openRate+'%', c.clicks, c.clickRate+'%',
       c.unsubscribes, c.spamComplaints, c.bounces

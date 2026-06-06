@@ -201,7 +201,7 @@ router.get('/', async (req, res) => {
           name: attrs.name || '',
           language,
           sendDate,
-          sendTime: rawTime ? rawTime.split('T')[1]?.slice(0, 5) : null,
+          sendTime: rawTime ? new Date(rawTime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome' }) : null,
           subject: msgContent.subject || '',
           previewText: msgContent.preview_text || '',
           recipients: Math.round(st.recipients || 0),

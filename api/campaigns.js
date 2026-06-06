@@ -160,9 +160,11 @@ router.get('/', async (req, res) => {
       const msgId = c.relationships?.['campaign-messages']?.data?.[0]?.id;
       const msgContent = msgMap[msgId] || {};
 
-      // send_time: usa send_time diretto (API 2024) oppure scheduled_at
+      // send_time: usa send_time (orario effettivo) oppure scheduled_at, convertito in timezone Rome
       const rawTime = attrs.send_time || attrs.scheduled_at;
-      const sendTime = rawTime ? rawTime.split('T')[1]?.slice(0, 5) : null;
+      const sendTime = rawTime
+        ? new Date(rawTime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome' })
+        : null;
 
       return {
         id: c.id,
