@@ -3,7 +3,9 @@ const router = require('express').Router();
 const cache = new Map();
 const CACHE_TTL = 30 * 60 * 1000;
 const KLAVIYO_BASE = 'https://a.klaviyo.com/api';
-const REVISION = '2023-10-15';
+const REVISION = '2024-10-15';
+const CONVERSION_METRIC_ID = 'SRuFLu';
+const CLICKED_EMAIL_METRIC_ID = 'UDUzgX';
 
 function klaviyoHeaders() {
   return {
@@ -39,16 +41,42 @@ function parseCampaignName(name) {
 
 async function fetchAllCampaigns() {
   const campaigns = [];
-  let url = `${KLAVIYO_BASE}/campaigns/?filter=equals(messages.channel,'email')&sort=-created_at&page[size]=50`;
+  let url = `${KLAVIYO_BASE}/campaigns/?filter=equals(messages.channel,'email')&sort=-created_at`;
   while (url) {
-    const res = await fetchWithTimeout(url, { headers: klaviyoHeaders() }, 5000);
+    const res = await fetchWithTimeout(url, { headers: klaviyoHeaders() }, 25000);
     if (!res.ok) break;
     const json = await res.json();
     campaigns.push(...(json.data || []));
-    url = json.links?.next || null;
-    if (campaigns.length >= 200) break;
+    url = null; // Limite 100 campagne per timeout Vercel
   }
   return campaigns;
+}
+
+async function fetchMessagesForCampaigns(campaigns) {
+  const MSG_REVISION = '2026-04-15';
+  const pairs = campaigns
+    .map(c => ({ msgId: c.relationships?.['campaign-messages']?.data?.[0]?.id, campId: c.id }))
+    .filter(p => p.msgId);
+  if (!pairs.length) return {};
+
+  const msgMap = {};
+  const concurrency = 5;
+  for (let i = 0; i < pairs.length; i += concurrency) {
+    const batch = pairs.slice(i, i + concurrency);
+    await Promise.all(batch.map(async ({ msgId }) => {
+      const res = await fetchWithTimeout(
+        `${KLAVIYO_BASE}/campaign-messages/${msgId}/`,
+        { headers: { Authorization: `Klaviyo-API-Key ${process.env.KLAVIYO_API_KEY}`, revision: MSG_REVISION } },
+        5000
+      ).catch(() => null);
+      if (!res || !res.ok) return;
+      const json = await res.json().catch(() => null);
+      if (!json?.data) return;
+      const def = json.data.attributes?.definition?.content || json.data.attributes?.content || {};
+      msgMap[msgId] = def;
+    }));
+  }
+  return msgMap;
 }
 
 async function fetchStatsForCampaigns() {
@@ -64,22 +92,29 @@ async function fetchStatsForCampaigns() {
             statistics: [
               'opens', 'open_rate', 'clicks', 'click_rate',
               'unsubscribes', 'unsubscribe_rate',
-              'bounces', 'bounce_rate',
               'spam_complaints', 'recipients',
+              'delivered', 'delivery_rate',
             ],
-            timeframe: { key: 'all_time' },
+            timeframe: (() => {
+              const end = new Date();
+              const start = new Date(end);
+              start.setFullYear(start.getFullYear() - 1);
+              return { start: start.toISOString().slice(0,19), end: end.toISOString().slice(0,19) };
+            })(),
+            conversion_metric_id: CONVERSION_METRIC_ID,
             filter: "equals(send_channel,'email')",
           },
         },
       }),
     },
-    5000
+    8000
   );
   if (!res.ok) return {};
   const json = await res.json();
   const statsMap = {};
   for (const r of json?.data?.attributes?.results || []) {
-    statsMap[r.id] = r.attributes;
+    const cid = r.groupings?.campaign_id || r.id;
+    if (cid) statsMap[cid] = r.statistics || {};
   }
   return statsMap;
 }
@@ -90,16 +125,6 @@ async function fetchLinkActivity(campaignId) {
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
 
   try {
-    const metricsRes = await fetchWithTimeout(
-      `${KLAVIYO_BASE}/metrics/`,
-      { headers: klaviyoHeaders() },
-      5000
-    );
-    if (!metricsRes.ok) return [];
-    const metricsJson = await metricsRes.json();
-    const metric = (metricsJson.data || []).find(m => m.attributes?.name === 'Clicked Email');
-    if (!metric) return [];
-
     const aggRes = await fetchWithTimeout(
       `${KLAVIYO_BASE}/metric-aggregates/`,
       {
@@ -109,7 +134,7 @@ async function fetchLinkActivity(campaignId) {
           data: {
             type: 'metric-aggregate',
             attributes: {
-              metric_id: metric.id,
+              metric_id: CLICKED_EMAIL_METRIC_ID,
               measurements: ['unique', 'count'],
               filter: [`equals(campaign_id,"${campaignId}")`],
               by: ['$event_properties.URL'],
@@ -124,15 +149,23 @@ async function fetchLinkActivity(campaignId) {
     if (!aggRes.ok) return [];
     const json = await aggRes.json();
     const attrs = json?.data?.attributes || {};
+    const dims = attrs.data?.dimensions || [];
+    const measurements = attrs.data?.measurements || {};
     let data = [];
-    if (attrs.results) {
+    if (dims.length > 0) {
+      data = dims.map((dim, i) => ({
+        url: Array.isArray(dim) ? dim[0] : (dim['$event_properties.URL'] || dim),
+        uniqueClicks: measurements?.unique?.[i] ?? 0,
+        totalClicks: measurements?.count?.[i] ?? 0,
+      }));
+    } else if (attrs.results) {
       data = attrs.results.map(r => ({
         url: r.dimensions?.['$event_properties.URL'] || '',
         uniqueClicks: r.measurements?.unique || 0,
         totalClicks: r.measurements?.count || 0,
       }));
     }
-    data.sort((a, b) => b.totalClicks - a.totalClicks);
+    data = data.filter(d => d.url).sort((a, b) => b.totalClicks - a.totalClicks);
     cache.set(cacheKey, { data, ts: Date.now() });
     return data;
   } catch (e) {
@@ -153,6 +186,7 @@ router.get('/', async (req, res) => {
       fetchAllCampaigns().catch(() => []),
       fetchStatsForCampaigns().catch(() => ({})),
     ]);
+    const msgMap = await fetchMessagesForCampaigns(rawCampaigns).catch(() => ({}));
 
     const startDate = new Date(start);
     const endDate = new Date(end);
@@ -161,27 +195,28 @@ router.get('/', async (req, res) => {
     const filtered = rawCampaigns
       .map(c => {
         const attrs = c.attributes || {};
-        const msg = attrs.message || {};
         const { language, sendDate, number } = parseCampaignName(attrs.name || '');
         const st = statsMap[c.id] || {};
+        const msgId = c.relationships?.['campaign-messages']?.data?.[0]?.id;
+        const msgContent = msgId ? (msgMap[msgId] || {}) : {};
+        const rawTime = attrs.send_time || attrs.scheduled_at;
         return {
           id: c.id,
           name: attrs.name || '',
           language,
           sendDate,
-          sendTime: attrs.scheduled_at ? attrs.scheduled_at.split('T')[1]?.slice(0, 5) : null,
-          subject: msg.subject || attrs.subject || '',
-          previewText: msg.preview_text || attrs.preview_text || '',
-          recipients: st.recipients || 0,
-          opens: st.opens || 0,
+          sendTime: rawTime ? rawTime.split('T')[1]?.slice(0, 5) : null,
+          subject: msgContent.subject || '',
+          previewText: msgContent.preview_text || '',
+          recipients: Math.round(st.recipients || 0),
+          opens: Math.round(st.opens || 0),
           openRate: st.open_rate ? parseFloat((st.open_rate * 100).toFixed(1)) : 0,
-          clicks: st.clicks || 0,
+          clicks: Math.round(st.clicks || 0),
           clickRate: st.click_rate ? parseFloat((st.click_rate * 100).toFixed(1)) : 0,
-          unsubscribes: st.unsubscribes || 0,
+          unsubscribes: Math.round(st.unsubscribes || 0),
           unsubscribeRate: st.unsubscribe_rate ? parseFloat((st.unsubscribe_rate * 100).toFixed(2)) : 0,
-          spamComplaints: st.spam_complaints || 0,
-          bounces: st.bounces || 0,
-          bounceRate: st.bounce_rate ? parseFloat((st.bounce_rate * 100).toFixed(2)) : 0,
+          spamComplaints: Math.round(st.spam_complaints || 0),
+          delivered: Math.round(st.delivered || 0),
           number,
         };
       })
@@ -197,7 +232,7 @@ router.get('/', async (req, res) => {
       clicks: filtered.reduce((s, c) => s + c.clicks, 0),
       unsubscribes: filtered.reduce((s, c) => s + c.unsubscribes, 0),
       spamComplaints: filtered.reduce((s, c) => s + c.spamComplaints, 0),
-      bounces: filtered.reduce((s, c) => s + c.bounces, 0),
+      delivered: filtered.reduce((s, c) => s + c.delivered, 0),
       openRate: filtered.length ? parseFloat((filtered.reduce((s, c) => s + c.openRate, 0) / filtered.length).toFixed(1)) : 0,
       clickRate: filtered.length ? parseFloat((filtered.reduce((s, c) => s + c.clickRate, 0) / filtered.length).toFixed(1)) : 0,
     };

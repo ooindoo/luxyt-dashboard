@@ -3,7 +3,9 @@ const router = require('express').Router();
 const cache = new Map();
 const CACHE_TTL = 30 * 60 * 1000;
 const KLAVIYO_BASE = 'https://a.klaviyo.com/api';
-const REVISION = '2023-10-15';
+const REVISION = '2024-10-15';
+// Metric IDs (Klaviyo account-specific, resolved at startup)
+const CONVERSION_METRIC_ID = 'SRuFLu'; // Opened Email — fallback per account senza Placed Order
 
 function klaviyoHeaders() {
   return {
@@ -47,11 +49,16 @@ router.get('/', async (req, res) => {
                 'opens', 'open_rate',
                 'clicks', 'click_rate',
                 'unsubscribes', 'unsubscribe_rate',
-                'bounces', 'bounce_rate',
                 'spam_complaints', 'recipients',
-                'revenue', 'conversions',
+                'delivered', 'delivery_rate',
               ],
-              timeframe: { key: 'last_30_days' },
+              timeframe: (() => {
+                const end = new Date();
+                const start = new Date(end);
+                start.setDate(start.getDate() - 30);
+                return { start: start.toISOString().slice(0,19), end: end.toISOString().slice(0,19) };
+              })(),
+              conversion_metric_id: CONVERSION_METRIC_ID,
               filter: "equals(send_channel,'email')",
             },
           },
@@ -61,46 +68,40 @@ router.get('/', async (req, res) => {
     );
 
     if (!reportRes.ok) {
-      return res.json({ revenue: 0, openRate: 0, clickRate: 0, conversionRate: 0, unsubscribeRate: 0, campaigns: [] });
+      return res.json({ openRate: 0, clickRate: 0, unsubscribeRate: 0, campaigns: [] });
     }
 
     const reportJson = await reportRes.json();
+    // API 2024-10-15: results[i].statistics (non più .attributes), id in .groupings.campaign_id
     const results = reportJson?.data?.attributes?.results || [];
 
-    let totalRevenue = 0, totalOpenRate = 0, totalClickRate = 0,
-        totalConvRate = 0, totalUnsub = 0, count = 0;
+    let totalOpenRate = 0, totalClickRate = 0, totalUnsub = 0, count = 0;
 
     const campaigns = results.map(r => {
-      const a = r.attributes;
-      totalRevenue += a.revenue || 0;
-      totalOpenRate += a.open_rate || 0;
-      totalClickRate += a.click_rate || 0;
-      totalConvRate += (a.conversions && a.recipients ? a.conversions / a.recipients : 0);
-      totalUnsub += a.unsubscribe_rate || 0;
+      const s = r.statistics || {};
+      const cid = r.groupings?.campaign_id || r.id;
+      totalOpenRate += s.open_rate || 0;
+      totalClickRate += s.click_rate || 0;
+      totalUnsub += s.unsubscribe_rate || 0;
       count++;
       return {
-        id: r.id,
-        opens: a.opens || 0,
-        openRate: a.open_rate || 0,
-        clicks: a.clicks || 0,
-        clickRate: a.click_rate || 0,
-        unsubscribes: a.unsubscribes || 0,
-        unsubscribeRate: a.unsubscribe_rate || 0,
-        bounces: a.bounces || 0,
-        bounceRate: a.bounce_rate || 0,
-        spamComplaints: a.spam_complaints || 0,
-        recipients: a.recipients || 0,
-        revenue: a.revenue || 0,
-        conversions: a.conversions || 0,
+        id: cid,
+        opens: Math.round(s.opens || 0),
+        openRate: s.open_rate || 0,
+        clicks: Math.round(s.clicks || 0),
+        clickRate: s.click_rate || 0,
+        unsubscribes: Math.round(s.unsubscribes || 0),
+        unsubscribeRate: s.unsubscribe_rate || 0,
+        spamComplaints: Math.round(s.spam_complaints || 0),
+        recipients: Math.round(s.recipients || 0),
+        delivered: Math.round(s.delivered || 0),
       };
     });
 
     const n = count || 1;
     const data = {
-      revenue: totalRevenue,
       openRate: parseFloat((totalOpenRate / n * 100).toFixed(1)),
       clickRate: parseFloat((totalClickRate / n * 100).toFixed(1)),
-      conversionRate: parseFloat((totalConvRate / n * 100).toFixed(2)),
       unsubscribeRate: parseFloat((totalUnsub / n * 100).toFixed(2)),
       campaigns,
     };
@@ -108,7 +109,7 @@ router.get('/', async (req, res) => {
     cache.set(cacheKey, { data, ts: Date.now() });
     res.json(data);
   } catch (e) {
-    res.json({ revenue: 0, openRate: 0, clickRate: 0, conversionRate: 0, unsubscribeRate: 0, campaigns: [] });
+    res.json({ openRate: 0, clickRate: 0, unsubscribeRate: 0, campaigns: [] });
   }
 });
 

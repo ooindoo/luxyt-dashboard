@@ -3,7 +3,8 @@ const router = require('express').Router();
 const cache = new Map();
 const CACHE_TTL = 30 * 60 * 1000;
 const KLAVIYO_BASE = 'https://a.klaviyo.com/api';
-const REVISION = '2023-10-15';
+const REVISION = '2024-10-15';
+const CLICKED_EMAIL_METRIC_ID = 'UDUzgX'; // hardcoded — stabile per account Klaviyo
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
   const controller = new AbortController();
@@ -18,29 +19,6 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
   }
 }
 
-async function getClickedEmailMetricId() {
-  const cacheKey = 'metric_clicked_email';
-  const cached = cache.get(cacheKey);
-  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
-
-  const res = await fetchWithTimeout(
-    `${KLAVIYO_BASE}/metrics/`,
-    {
-      headers: {
-        Authorization: `Klaviyo-API-Key ${process.env.KLAVIYO_API_KEY}`,
-        revision: REVISION,
-      },
-    },
-    5000
-  );
-  if (!res.ok) return null;
-  const json = await res.json();
-  const metric = (json.data || []).find(m => m.attributes?.name === 'Clicked Email');
-  const id = metric?.id || null;
-  cache.set(cacheKey, { data: id, ts: Date.now() });
-  return id;
-}
-
 router.get('/', async (req, res) => {
   const { campaign_id } = req.query;
   if (!campaign_id) return res.json([]);
@@ -52,9 +30,6 @@ router.get('/', async (req, res) => {
   }
 
   try {
-    const metricId = await getClickedEmailMetricId();
-    if (!metricId) return res.json([]);
-
     const aggRes = await fetchWithTimeout(
       `${KLAVIYO_BASE}/metric-aggregates/`,
       {
@@ -68,7 +43,7 @@ router.get('/', async (req, res) => {
           data: {
             type: 'metric-aggregate',
             attributes: {
-              metric_id: metricId,
+              metric_id: CLICKED_EMAIL_METRIC_ID,
               measurements: ['unique', 'count'],
               filter: [`equals(campaign_id,"${campaign_id}")`],
               by: ['$event_properties.URL'],
@@ -85,26 +60,28 @@ router.get('/', async (req, res) => {
 
     const json = await aggRes.json();
     const attrs = json?.data?.attributes || {};
-    const urls = attrs.data?.urls || attrs.results || [];
-    const measurements = attrs.data?.measurements || {};
 
+    // API 2024-10-15 restituisce data.dimensions[] + data.measurements{}
+    const dims = attrs.data?.dimensions || [];
+    const measurements = attrs.data?.measurements || {};
     let data = [];
 
-    if (Array.isArray(urls) && urls.length > 0) {
-      data = urls.map((url, i) => ({
-        url,
+    if (dims.length > 0) {
+      data = dims.map((dim, i) => ({
+        url: Array.isArray(dim) ? dim[0] : (dim['$event_properties.URL'] || dim),
         uniqueClicks: measurements?.unique?.[i] ?? 0,
         totalClicks: measurements?.count?.[i] ?? 0,
       }));
     } else if (attrs.results) {
-      data = (attrs.results || []).map(r => ({
+      // fallback formato precedente
+      data = attrs.results.map(r => ({
         url: r.dimensions?.['$event_properties.URL'] || '',
         uniqueClicks: r.measurements?.unique || 0,
         totalClicks: r.measurements?.count || 0,
       }));
     }
 
-    data.sort((a, b) => b.totalClicks - a.totalClicks);
+    data = data.filter(d => d.url).sort((a, b) => b.totalClicks - a.totalClicks);
     cache.set(cacheKey, { data, ts: Date.now() });
     res.json(data);
   } catch (e) {

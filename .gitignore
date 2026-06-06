@@ -11,3 +11,4 @@ yarn-error.log*
 Thumbs.db
 dist/
 .cache/
+.vercel

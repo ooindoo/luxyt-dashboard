@@ -3,7 +3,8 @@ const router = require('express').Router();
 const cache = new Map();
 const CACHE_TTL = 30 * 60 * 1000;
 const KLAVIYO_BASE = 'https://a.klaviyo.com/api';
-const REVISION = '2023-10-15';
+const REVISION = '2024-10-15';
+const CONVERSION_METRIC_ID = 'SRuFLu'; // Opened Email
 
 function klaviyoHeaders() {
   return {
@@ -45,21 +46,60 @@ function parseCampaignName(name) {
 
 async function fetchAllCampaigns() {
   const campaigns = [];
-  let url = `${KLAVIYO_BASE}/campaigns/?filter=equals(messages.channel,'email')&sort=-created_at&page[size]=50`;
+  let url = `${KLAVIYO_BASE}/campaigns/?filter=equals(messages.channel,'email')&sort=-created_at`;
 
   while (url) {
-    const res = await fetchWithTimeout(url, { headers: klaviyoHeaders() }, 5000);
+    const res = await fetchWithTimeout(url, { headers: klaviyoHeaders() }, 25000);
     if (!res.ok) break;
     const json = await res.json();
     campaigns.push(...(json.data || []));
-    url = json.links?.next || null;
-    if (campaigns.length >= 200) break;
+    // Limite 100 campagne (≈ 1 anno per Luxyt) per rispettare timeout Vercel
+    url = null;
   }
   return campaigns;
 }
 
-async function fetchCampaignStats(campaignIds) {
-  if (!campaignIds.length) return {};
+async function fetchMessagesForCampaigns(campaigns) {
+  // API 2026-04-15: singolo fetch per ID, soggetto in .definition.content
+  // Limite concorrenza: 20 richieste parallele alla volta
+  const MSG_REVISION = '2026-04-15';
+  const pairs = campaigns
+    .map(c => ({
+      msgId: c.relationships?.['campaign-messages']?.data?.[0]?.id,
+      campId: c.id,
+    }))
+    .filter(p => p.msgId);
+
+  if (!pairs.length) return {};
+
+  const msgMap = {};
+  const concurrency = 5;
+  for (let i = 0; i < pairs.length; i += concurrency) {
+    const batch = pairs.slice(i, i + concurrency);
+    await Promise.all(batch.map(async ({ msgId }) => {
+      const res = await fetchWithTimeout(
+        `${KLAVIYO_BASE}/campaign-messages/${msgId}/`,
+        {
+          headers: {
+            Authorization: `Klaviyo-API-Key ${process.env.KLAVIYO_API_KEY}`,
+            revision: MSG_REVISION,
+          },
+        },
+        5000
+      ).catch(() => null);
+      if (!res || !res.ok) return;
+      const json = await res.json().catch(() => null);
+      if (!json?.data) return;
+      // In revision 2026-04-15 il content è sotto .definition.content
+      const def = json.data.attributes?.definition?.content
+                || json.data.attributes?.content || {};
+      msgMap[msgId] = def;
+    }));
+  }
+  return msgMap;
+}
+
+async function fetchCampaignStats() {
   const res = await fetchWithTimeout(
     `${KLAVIYO_BASE}/campaign-values-reports/`,
     {
@@ -72,22 +112,30 @@ async function fetchCampaignStats(campaignIds) {
             statistics: [
               'opens', 'open_rate', 'clicks', 'click_rate',
               'unsubscribes', 'unsubscribe_rate',
-              'bounces', 'bounce_rate',
               'spam_complaints', 'recipients',
+              'delivered', 'delivery_rate',
             ],
-            timeframe: { key: 'all_time' },
+            timeframe: (() => {
+              const end = new Date();
+              const start = new Date(end);
+              start.setFullYear(start.getFullYear() - 1);
+              return { start: start.toISOString().slice(0,19), end: end.toISOString().slice(0,19) };
+            })(),
+            conversion_metric_id: CONVERSION_METRIC_ID,
             filter: "equals(send_channel,'email')",
           },
         },
       }),
     },
-    5000
+    8000
   );
   if (!res.ok) return {};
   const json = await res.json();
+  // API 2024-10-15: risultati in .statistics (non .attributes), id in .groupings.campaign_id
   const statsMap = {};
   for (const r of json?.data?.attributes?.results || []) {
-    statsMap[r.id] = r.attributes;
+    const cid = r.groupings?.campaign_id || r.id;
+    if (cid) statsMap[cid] = r.statistics || {};
   }
   return statsMap;
 }
@@ -100,34 +148,44 @@ router.get('/', async (req, res) => {
   }
 
   try {
-    const rawCampaigns = await fetchAllCampaigns();
-    const ids = rawCampaigns.map(c => c.id);
-    const statsMap = await fetchCampaignStats(ids).catch(() => ({}));
+    const [rawCampaigns, statsMap] = await Promise.all([
+      fetchAllCampaigns(),
+      fetchCampaignStats().catch(() => ({})),
+    ]);
+    // Fetch messaggi in parallelo dopo aver ottenuto i campaign IDs
+    const msgMap = await fetchMessagesForCampaigns(rawCampaigns).catch(() => ({}));
 
     const data = rawCampaigns.map(c => {
       const attrs = c.attributes || {};
-      const msg = attrs.message || {};
       const { language, sendDate, number } = parseCampaignName(attrs.name || '');
       const st = statsMap[c.id] || {};
+
+      // subject/preview: dall'included campaign-message tramite relationship
+      const msgId = c.relationships?.['campaign-messages']?.data?.[0]?.id;
+      const msgContent = msgMap[msgId] || {};
+
+      // send_time: usa send_time diretto (API 2024) oppure scheduled_at
+      const rawTime = attrs.send_time || attrs.scheduled_at;
+      const sendTime = rawTime ? rawTime.split('T')[1]?.slice(0, 5) : null;
 
       return {
         id: c.id,
         name: attrs.name || '',
         language,
         sendDate,
-        sendTime: attrs.scheduled_at ? attrs.scheduled_at.split('T')[1]?.slice(0, 5) : null,
-        subject: msg.subject || attrs.subject || '',
-        previewText: msg.preview_text || attrs.preview_text || '',
-        recipients: st.recipients || 0,
-        opens: st.opens || 0,
+        sendTime,
+        subject: msgContent.subject || '',
+        previewText: msgContent.preview_text || '',
+        recipients: Math.round(st.recipients || 0),
+        opens: Math.round(st.opens || 0),
         openRate: st.open_rate ? parseFloat((st.open_rate * 100).toFixed(1)) : 0,
-        clicks: st.clicks || 0,
+        clicks: Math.round(st.clicks || 0),
         clickRate: st.click_rate ? parseFloat((st.click_rate * 100).toFixed(1)) : 0,
-        unsubscribes: st.unsubscribes || 0,
+        unsubscribes: Math.round(st.unsubscribes || 0),
         unsubscribeRate: st.unsubscribe_rate ? parseFloat((st.unsubscribe_rate * 100).toFixed(2)) : 0,
-        spamComplaints: st.spam_complaints || 0,
-        bounces: st.bounces || 0,
-        bounceRate: st.bounce_rate ? parseFloat((st.bounce_rate * 100).toFixed(2)) : 0,
+        spamComplaints: Math.round(st.spam_complaints || 0),
+        delivered: Math.round(st.delivered || 0),
+        deliveryRate: st.delivery_rate ? parseFloat((st.delivery_rate * 100).toFixed(1)) : 0,
         number,
       };
     });
