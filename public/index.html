@@ -30,7 +30,7 @@
           const json = await res.json();
           if (json.ok) {
             localStorage.setItem('lx_token', pwd);
-            window.location.href = '/dashboard.html';
+            window.location.href = '/dashboard';
             return;
           }
         }
@@ -46,7 +46,7 @@
     });
 
     if (localStorage.getItem('lx_token')) {
-      window.location.href = '/dashboard.html';
+      window.location.href = '/dashboard';
     }
   </script>
 </body>

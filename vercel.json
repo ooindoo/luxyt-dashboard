@@ -21,6 +21,10 @@
       "dest": "/public/assets/$1"
     },
     {
+      "src": "/dashboard",
+      "dest": "/public/dashboard.html"
+    },
+    {
       "src": "/dashboard.html",
       "dest": "/public/dashboard.html"
     },
