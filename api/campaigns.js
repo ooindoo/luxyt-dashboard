@@ -46,7 +46,8 @@ function parseCampaignName(name) {
 
 async function fetchAllCampaigns() {
   const campaigns = [];
-  let url = `${KLAVIYO_BASE}/campaigns/?filter=equals(messages.channel,'email')&sort=-created_at`;
+  // Filtra: solo email, solo Sent, solo dal 2026 (send_time non è filtrabile → uso scheduled_at)
+  let url = `${KLAVIYO_BASE}/campaigns/?filter=and(equals(messages.channel,'email'),equals(status,'Sent'),greater-or-equal(scheduled_at,2026-01-01T00:00:00Z))&sort=-scheduled_at`;
 
   while (url) {
     const res = await fetchWithTimeout(url, { headers: klaviyoHeaders() }, 25000);

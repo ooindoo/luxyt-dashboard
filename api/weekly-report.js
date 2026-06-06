@@ -41,7 +41,8 @@ function parseCampaignName(name) {
 
 async function fetchAllCampaigns() {
   const campaigns = [];
-  let url = `${KLAVIYO_BASE}/campaigns/?filter=equals(messages.channel,'email')&sort=-created_at`;
+  // Filtra: solo email, solo Sent, solo dal 2026 (send_time non è filtrabile → uso scheduled_at)
+  let url = `${KLAVIYO_BASE}/campaigns/?filter=and(equals(messages.channel,'email'),equals(status,'Sent'),greater-or-equal(scheduled_at,2026-01-01T00:00:00Z))&sort=-scheduled_at`;
   while (url) {
     const res = await fetchWithTimeout(url, { headers: klaviyoHeaders() }, 25000);
     if (!res.ok) break;
@@ -184,11 +185,18 @@ router.get('/', async (req, res) => {
     ]);
     const msgMap = await fetchMessagesForCampaigns(rawCampaigns).catch(() => ({}));
 
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    endDate.setHours(23, 59, 59, 999);
+    // Usa UTC esplicito nel confronto date per evitare ambiguità timezone
+    const startDate = new Date(start + 'T00:00:00Z');
+    const endDate   = new Date(end   + 'T23:59:59Z');
 
     const filtered = rawCampaigns
+      .filter(c => {
+        // Confronta send_time reale (non il nome) con il range richiesto
+        const rawSendTime = c.attributes?.send_time || c.attributes?.scheduled_at;
+        if (!rawSendTime) return false;
+        const sendDate = new Date(rawSendTime);
+        return sendDate >= startDate && sendDate <= endDate;
+      })
       .map(c => {
         const attrs = c.attributes || {};
         const { language, sendDate, number } = parseCampaignName(attrs.name || '');
@@ -216,11 +224,6 @@ router.get('/', async (req, res) => {
           bounces: Math.max(0, Math.round((st.recipients || 0) - (st.delivered || 0))),
           number,
         };
-      })
-      .filter(c => {
-        if (!c.sendDate) return false;
-        const d = new Date(c.sendDate);
-        return d >= startDate && d <= endDate;
       });
 
     const totals = {

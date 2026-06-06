@@ -101,6 +101,7 @@
 
   <!-- ═══ PANORAMICA ═══ -->
   <section id="sec-panoramica" class="section active">
+    <p style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:14px">Dati ultimi 30 giorni</p>
 
     <div class="kpi-grid" id="kpi-grid">
       <div class="kpi-card"><div class="kpi-label">Open Rate</div><div class="kpi-value" id="kpi-open-rate">—</div></div>
@@ -108,7 +109,6 @@
       <div class="kpi-card"><div class="kpi-label">Unsub Rate</div><div class="kpi-value" id="kpi-unsub">—</div></div>
       <div class="kpi-card"><div class="kpi-label">Consegnate</div><div class="kpi-value" id="kpi-delivered">—</div></div>
     </div>
-    <p style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:20px">Dati ultimi 30 giorni</p>
 
     <div class="section-bar">Ultime Campagne</div>
     <div class="table-wrap">
@@ -567,7 +567,7 @@ async function loadLinkActivitySection() {
 
   container.innerHTML = campaigns.map(c => `
     <div class="la-campaign-header" data-id="${c.id}">
-      <span>${esc(c.name)} ${c.sendDate ? `<span style="color:#888;font-weight:400">${c.sendDate}</span>` : ''}</span>
+      <span>${esc(c.name)}</span>
       <svg class="arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
         <polyline points="4,6 8,10 12,6"/>
       </svg>
