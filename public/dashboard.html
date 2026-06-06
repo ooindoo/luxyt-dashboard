@@ -249,7 +249,9 @@ async function loadPanoramica() {
     document.getElementById('kpi-open-rate').textContent = `${d.openRate ?? '—'}%`;
     document.getElementById('kpi-ctr').textContent       = `${d.clickRate ?? '—'}%`;
     document.getElementById('kpi-unsub').textContent     = `${d.unsubscribeRate ?? '—'}%`;
-    const totalDelivered = (d.campaigns || []).reduce((s, c) => s + (c.delivered || 0), 0);
+    // totalDelivered ora arriva direttamente dall'API (pre-calcolato)
+    const totalDelivered = d.totalDelivered
+      ?? (d.campaigns || []).reduce((s, c) => s + (c.delivered || 0), 0);
     document.getElementById('kpi-delivered').textContent = totalDelivered.toLocaleString('it-IT');
   }
 

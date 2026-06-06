@@ -1,10 +1,10 @@
 const router = require('express').Router();
+const { getCampaignStats } = require('./shared-stats');
 
 const cache = new Map();
 const CACHE_TTL = 60 * 60 * 1000; // 60 minuti
 const KLAVIYO_BASE = 'https://a.klaviyo.com/api';
 const REVISION = '2024-10-15';
-const CONVERSION_METRIC_ID = 'SRuFLu';
 const CLICKED_EMAIL_METRIC_ID = 'UDUzgX';
 const MSG_REVISION = '2026-04-15';
 
@@ -46,36 +46,9 @@ async function fetchCampaigns() {
 }
 
 // ── Fetch statistiche ─────────────────────────────────────────────────────────
+// weekly-report usa il modulo condiviso (evita altra chiamata Klaviyo)
 async function fetchStats() {
-  const res = await fetchWithTimeout(
-    `${KLAVIYO_BASE}/campaign-values-reports/`,
-    {
-      method: 'POST',
-      headers: klaviyoHeaders(),
-      body: JSON.stringify({
-        data: {
-          type: 'campaign-values-report',
-          attributes: {
-            statistics: ['opens','open_rate','clicks','click_rate',
-                         'unsubscribes','unsubscribe_rate','spam_complaints',
-                         'recipients','delivered','delivery_rate'],
-            timeframe: { key: 'last_365_days' },
-            conversion_metric_id: CONVERSION_METRIC_ID,
-            filter: "equals(send_channel,'email')",
-          },
-        },
-      }),
-    },
-    8000
-  );
-  if (!res.ok) return {};
-  const j = await res.json();
-  const map = {};
-  for (const r of j?.data?.attributes?.results || []) {
-    const id = r.groupings?.campaign_id || r.id;
-    if (id) map[id] = r.statistics || {};
-  }
-  return map;
+  return getCampaignStats();
 }
 
 // ── Fetch messaggi SOLO per le campagne filtrate (poche, parallelo totale) ────

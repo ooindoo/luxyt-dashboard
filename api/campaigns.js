@@ -1,10 +1,10 @@
 const router = require('express').Router();
+const { getCampaignStats } = require('./shared-stats');
 
 const cache = new Map();
 const CACHE_TTL = 60 * 60 * 1000; // 60 minuti
 const KLAVIYO_BASE = 'https://a.klaviyo.com/api';
 const REVISION = '2024-10-15';
-const CONVERSION_METRIC_ID = 'SRuFLu';
 
 const CAMPAIGNS_FILTER = "and(equals(messages.channel,'email'),equals(status,'Sent'),greater-or-equal(scheduled_at,2026-01-01T00:00:00Z))";
 
@@ -45,38 +45,7 @@ async function fetchCampaigns() {
   return j.data || [];
 }
 
-// ── Fetch statistiche (parallelo con campagne) ────────────────────────────────
-async function fetchStats() {
-  const res = await fetchWithTimeout(
-    `${KLAVIYO_BASE}/campaign-values-reports/`,
-    {
-      method: 'POST',
-      headers: klaviyoHeaders(),
-      body: JSON.stringify({
-        data: {
-          type: 'campaign-values-report',
-          attributes: {
-            statistics: ['opens','open_rate','clicks','click_rate',
-                         'unsubscribes','unsubscribe_rate','spam_complaints',
-                         'recipients','delivered','delivery_rate'],
-            timeframe: { key: 'last_365_days' },
-            conversion_metric_id: CONVERSION_METRIC_ID,
-            filter: "equals(send_channel,'email')",
-          },
-        },
-      }),
-    },
-    8000
-  );
-  if (!res.ok) return {};
-  const j = await res.json();
-  const map = {};
-  for (const r of j?.data?.attributes?.results || []) {
-    const id = r.groupings?.campaign_id || r.id;
-    if (id) map[id] = r.statistics || {};
-  }
-  return map;
-}
+// fetchStats usa il modulo condiviso (evita doppia chiamata Klaviyo con panoramica-data)
 
 // ── Route ─────────────────────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
@@ -85,10 +54,10 @@ router.get('/', async (req, res) => {
   if (hit && Date.now() - hit.ts < CACHE_TTL) return res.json(hit.data);
 
   try {
-    // Parallelo: campagne + statistiche insieme
+    // Parallelo: campagne + statistiche (stats usa modulo condiviso — no doppia chiamata Klaviyo)
     const [rawCampaigns, statsMap] = await Promise.all([
       fetchCampaigns().catch(() => []),
-      fetchStats().catch(() => ({})),
+      getCampaignStats().catch(() => ({})),
     ]);
 
     const data = rawCampaigns.map(c => {
@@ -120,7 +89,13 @@ router.get('/', async (req, res) => {
       };
     });
 
-    cache.set(cacheKey, { data, ts: Date.now() });
+    // Non cachare se tutte le stats sono 0 (fetchStats ha fallito → riprova prossima volta)
+    const hasStats = data.some(c => c.recipients > 0 || c.opens > 0);
+    if (hasStats) {
+      cache.set(cacheKey, { data, ts: Date.now() });
+    } else {
+      console.log('[campaigns] stats vuote — NON cacho, riproverò al prossimo request');
+    }
     res.json(data);
   } catch (e) {
     const stale = cache.get(cacheKey);
