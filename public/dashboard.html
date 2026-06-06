@@ -587,7 +587,7 @@ function renderReport() {
               <thead><tr><th>URL</th><th>Unique Clicks</th><th>Total Clicks</th></tr></thead>
               <tbody>${links.map(l => `
                 <tr>
-                  <td class="url-cell"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url.length > 50 ? l.url.slice(0, 50) + '…' : l.url)}</a></td>
+                  <td class="url-cell"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url.length > 60 ? l.url.substring(0, 60) + '...' : l.url)}</a></td>
                   <td>${l.uniqueClicks}</td>
                   <td>${l.totalClicks}</td>
                 </tr>`).join('')}
@@ -688,7 +688,7 @@ async function loadLinkActivitySection() {
               <thead><tr><th>URL</th><th>Unique Clicks</th><th>Total Clicks</th></tr></thead>
               <tbody>${links.map(l => `
                 <tr>
-                  <td class="url-cell"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url.length > 50 ? l.url.slice(0,50)+'…' : l.url)}</a></td>
+                  <td class="url-cell"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url.length > 60 ? l.url.substring(0, 60) + '...' : l.url)}</a></td>
                   <td>${l.uniqueClicks}</td>
                   <td>${l.totalClicks}</td>
                 </tr>`).join('')}

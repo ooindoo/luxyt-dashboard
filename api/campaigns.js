@@ -115,12 +115,8 @@ async function fetchCampaignStats() {
               'spam_complaints', 'recipients',
               'delivered', 'delivery_rate',
             ],
-            timeframe: (() => {
-              const end = new Date();
-              const start = new Date(end);
-              start.setFullYear(start.getFullYear() - 1);
-              return { start: start.toISOString().slice(0,19), end: end.toISOString().slice(0,19) };
-            })(),
+            // last_365_days funziona con API 2024-10-15 quando si include statistics[]
+            timeframe: { key: 'last_365_days' },
             conversion_metric_id: CONVERSION_METRIC_ID,
             filter: "equals(send_channel,'email')",
           },

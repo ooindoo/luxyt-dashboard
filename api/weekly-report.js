@@ -95,12 +95,7 @@ async function fetchStatsForCampaigns() {
               'spam_complaints', 'recipients',
               'delivered', 'delivery_rate',
             ],
-            timeframe: (() => {
-              const end = new Date();
-              const start = new Date(end);
-              start.setFullYear(start.getFullYear() - 1);
-              return { start: start.toISOString().slice(0,19), end: end.toISOString().slice(0,19) };
-            })(),
+            timeframe: { key: 'last_365_days' },
             conversion_metric_id: CONVERSION_METRIC_ID,
             filter: "equals(send_channel,'email')",
           },
@@ -125,6 +120,9 @@ async function fetchLinkActivity(campaignId) {
   if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
 
   try {
+    const end = new Date().toISOString().slice(0, 19);
+    const start = new Date(Date.now() - 364 * 86400 * 1000).toISOString().slice(0, 19);
+
     const aggRes = await fetchWithTimeout(
       `${KLAVIYO_BASE}/metric-aggregates/`,
       {
@@ -135,37 +133,35 @@ async function fetchLinkActivity(campaignId) {
             type: 'metric-aggregate',
             attributes: {
               metric_id: CLICKED_EMAIL_METRIC_ID,
-              measurements: ['unique', 'count'],
-              filter: [`equals(campaign_id,"${campaignId}")`],
-              by: ['$event_properties.URL'],
-              sort: '-count',
-              page_size: 100,
+              measurements: ['count', 'unique'],
+              interval: 'month',
+              filter: [
+                `greater-or-equal(datetime,${start})`,
+                `less-than(datetime,${end})`,
+                `equals($message,"${campaignId}")`,
+              ],
+              by: ['URL'],
+              page_size: 500,
             },
           },
         }),
       },
-      5000
+      10000
     );
     if (!aggRes.ok) return [];
     const json = await aggRes.json();
-    const attrs = json?.data?.attributes || {};
-    const dims = attrs.data?.dimensions || [];
-    const measurements = attrs.data?.measurements || {};
-    let data = [];
-    if (dims.length > 0) {
-      data = dims.map((dim, i) => ({
-        url: Array.isArray(dim) ? dim[0] : (dim['$event_properties.URL'] || dim),
-        uniqueClicks: measurements?.unique?.[i] ?? 0,
-        totalClicks: measurements?.count?.[i] ?? 0,
-      }));
-    } else if (attrs.results) {
-      data = attrs.results.map(r => ({
-        url: r.dimensions?.['$event_properties.URL'] || '',
-        uniqueClicks: r.measurements?.unique || 0,
-        totalClicks: r.measurements?.count || 0,
-      }));
-    }
-    data = data.filter(d => d.url).sort((a, b) => b.totalClicks - a.totalClicks);
+    if (json.errors) return [];
+    const items = json?.data?.attributes?.data || [];
+    const data = items
+      .map(item => {
+        const url = item.dimensions?.[0] || '';
+        if (!url) return null;
+        const totalClicks = (item.measurements?.count || []).reduce((a, b) => a + (parseInt(b) || 0), 0);
+        const uniqueClicks = (item.measurements?.unique || []).reduce((a, b) => a + (parseInt(b) || 0), 0);
+        return { url, totalClicks, uniqueClicks };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.totalClicks - a.totalClicks);
     cache.set(cacheKey, { data, ts: Date.now() });
     return data;
   } catch (e) {

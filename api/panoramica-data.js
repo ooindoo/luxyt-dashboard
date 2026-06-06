@@ -52,11 +52,12 @@ router.get('/', async (req, res) => {
                 'spam_complaints', 'recipients',
                 'delivered', 'delivery_rate',
               ],
+              // Rolling 30 giorni (last_30_days key non supportato in 2024-10-15)
               timeframe: (() => {
                 const end = new Date();
                 const start = new Date(end);
                 start.setDate(start.getDate() - 30);
-                return { start: start.toISOString().slice(0,19), end: end.toISOString().slice(0,19) };
+                return { start: start.toISOString().slice(0, 19), end: end.toISOString().slice(0, 19) };
               })(),
               conversion_metric_id: CONVERSION_METRIC_ID,
               filter: "equals(send_channel,'email')",
