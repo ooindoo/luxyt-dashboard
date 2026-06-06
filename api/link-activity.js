@@ -1,14 +1,14 @@
 const router = require('express').Router();
 
 const cache = new Map();
-const CACHE_TTL = 30 * 60 * 1000;
+const CACHE_TTL = 60 * 60 * 1000; // 60 minuti
 const KLAVIYO_BASE = 'https://a.klaviyo.com/api';
 const REVISION = '2024-10-15';
 
 // Metrica ID cachata a livello modulo — evita refetch ad ogni chiamata
 let cachedMetricId = null;
 
-async function fetchWithTimeout(url, options = {}, ms = 12000) {
+async function fetchWithTimeout(url, options = {}, ms = 8000) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ms);
   try {
